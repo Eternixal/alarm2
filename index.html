@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nerdix Pulse | Deep Focus</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+    
+    <script defer src="/_vercel/insights/script.js"></script>
+
+    <style>
+        :root {
+            --c10: #747880; --c09: #686c73; --c08: #5d6066;
+            --c07: #51545a; --c06: #46484d; --c05: #3a3c40;
+            --c04: #2e3033; --c03: #232426; --c02: #17181a;
+            --c01: #0c0c0d; 
+            --bg: var(--c01); --card-bg: var(--c02); --text-main: #D1D1D1; --border: var(--c03);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Ubuntu', sans-serif; -webkit-font-smoothing: antialiased; }
+        body { background: var(--bg); color: var(--text-main); height: 100vh; width: 100vw; overflow: hidden; }
+
+        .app-shell { height: 100vh; padding: 75px 16px 20px; max-width: 420px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
+        .card { width: 100%; background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; padding: 25px 20px; position: relative; }
+        
+        .brand-header { text-align: center; margin-bottom: 5px; }
+        .brand-header h1 { font-size: 1.1rem; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--text-main); }
+        
+        .nav-bar { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 1000; background: var(--c02); padding: 4px; border-radius: 12px; border: 1px solid var(--c03); display: flex; gap: 4px; }
+        .nav-btn { padding: 6px 18px; border-radius: 8px; border: none; color: var(--c08); background: transparent; font-size: 0.65rem; font-weight: 700; letter-spacing: 1.5px; cursor: pointer; transition: 0.3s; }
+        .nav-btn.active { background: var(--c04); color: var(--text-main); }
+
+        #soon-toast { 
+            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(20px); 
+            background: var(--text-main); color: #000; padding: 12px 24px; border-radius: 50px; 
+            font-size: 0.7rem; font-weight: 700; letter-spacing: 1px; z-index: 9999;
+            opacity: 0; visibility: hidden;
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #soon-toast.show { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+
+        .timer-scroller { display: flex; justify-content: center; align-items: center; gap: 15px; padding: 20px 0; }
+        .unit-box { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 80px; }
+        
+        .step-btn { 
+            background: var(--c03); border: none; color: var(--c08); 
+            width: 36px; height: 28px; border-radius: 6px; cursor: pointer;
+            font-size: 0.7rem; display: flex; align-items: center; justify-content: center;
+            transition: 0.2s; opacity: 0.5;
+        }
+        .step-btn:active { opacity: 1; background: var(--c05); }
+        .step-btn.hide { visibility: hidden; pointer-events: none; }
+
+        .digit { font-family: 'JetBrains Mono', monospace; font-size: 2.6rem; font-weight: 400; color: var(--text-main); letter-spacing: -1px; line-height: 1; }
+        .separator { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; color: var(--c05); margin-bottom: 30px; }
+        .unit-label { font-size: 0.5rem; color: var(--c08); font-weight: 700; letter-spacing: 2px; margin-top: 2px; text-transform: uppercase; }
+
+        .mood-selector { display: flex; justify-content: space-around; margin-top: 15px; background: var(--c01); padding: 12px; border-radius: 14px; border: 1px solid var(--c03); }
+        .mood-btn { background: none; border: none; font-size: 1.2rem; cursor: pointer; opacity: 0.2; filter: grayscale(1); transition: 0.4s; }
+        .mood-btn.active { opacity: 1; filter: grayscale(0); transform: scale(1.1); }
+        .vibe-label { font-size: 0.6rem; color: var(--text-main); margin-top: 10px; font-weight: 500; text-align: center; letter-spacing: 2px; text-transform: uppercase; }
+
+        .btn-main { width: 100%; padding: 18px; border-radius: 16px; border: none; font-size: 0.9rem; font-weight: 700; background: var(--c10); color: #000000; cursor: pointer; letter-spacing: 2px; text-transform: uppercase; margin-top: 10px; }
+        .tag-status { font-size: 0.55rem; font-weight: 700; padding: 4px 12px; border-radius: 6px; border: 1px solid var(--c04); color: var(--text-main); letter-spacing: 1.5px; }
+        
+        #finish-notice { position: absolute; inset: 0; background: var(--c02); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 10; padding: 20px; text-align: center; border-radius: 20px; }
+        
+        .confetti-text { animation: bounce 0.5s infinite alternate; }
+        @keyframes bounce { from { transform: scale(1); } to { transform: scale(1.1); } }
+    </style>
+</head>
+<body>
+
+    <div id="lofi-player" style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none;"></div>
+    <audio id="congrats-sfx" src="Luar Biasa.mp3"></audio>
+    
+    <div id="soon-toast">SEGERA HADIR ✨</div>
+
+    <nav class="nav-bar">
+        <button class="nav-btn active">FOKUS</button>
+        <button class="nav-btn soon" onclick="showSoon()">LOG</button>
+    </nav>
+
+    <div class="app-shell">
+        <div class="brand-header"><h1>Nerdix Pulse</h1></div>
+
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size: 0.6rem; font-weight: 700; color: var(--c08); letter-spacing: 1.5px;">SIAP MULAI</span>
+                <span id="day-status" class="tag-status">SANTAI</span>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-main); margin-top: 8px; opacity: 0.8;">Pilih atmosfer dan atur timer.</p>
+        </div>
+
+        <main class="card">
+            <div id="finish-notice">
+                <span class="confetti-text" style="font-size: 2.5rem; margin-bottom: 12px;">🏆</span>
+                <b style="font-size: 1.1rem; letter-spacing: 2px;">LUAR BIASA!</b>
+                <p id="quote-display" style="font-size: 0.85rem; margin: 12px 0 24px; line-height: 1.5; opacity: 0.8;"></p>
+                <button class="btn-main" onclick="closeFinishNotice()" style="width: auto; padding: 12px 30px;">RESTART</button>
+            </div>
+
+            <div style="text-align: center;">
+                <span style="font-size: 0.55rem; font-weight: 700; color: var(--c07); letter-spacing: 2px;">ATMOSFER</span>
+                <div class="mood-selector">
+                    <button class="mood-btn active" onclick="setMood('flow', this, 'FLOW')">🌊</button>
+                    <button class="mood-btn" onclick="setMood('clarity', this, 'CLARITY')">💎</button>
+                    <button class="mood-btn" onclick="setMood('deepwork', this, 'DEEP WORK')">🧘</button>
+                    <button class="mood-btn" onclick="setMood('void', this, 'VOID')">🌑</button>
+                </div>
+                <p id="vibe-text" class="vibe-label">FLOW</p>
+            </div>
+
+            <div class="timer-scroller">
+                <div class="unit-box">
+                    <button class="step-btn" onclick="changeValue('h', 1)">▲</button>
+                    <span class="digit" id="h-val">00</span>
+                    <button class="step-btn" onclick="changeValue('h', -1)">▼</button>
+                    <span class="unit-label">JAM</span>
+                </div>
+                <span class="separator">:</span>
+                <div class="unit-box">
+                    <button class="step-btn" onclick="changeValue('m', 1)">▲</button>
+                    <span class="digit" id="m-val">00</span>
+                    <button class="step-btn" onclick="changeValue('m', -1)">▼</button>
+                    <span class="unit-label">MENIT</span>
+                </div>
+                <span class="separator">:</span>
+                <div class="unit-box">
+                    <button class="step-btn" onclick="changeValue('s', 1)">▲</button>
+                    <span class="digit" id="s-val">00</span>
+                    <button class="step-btn" onclick="changeValue('s', -1)">▼</button>
+                    <span class="unit-label">DETIK</span>
+                </div>
+            </div>
+
+            <button class="btn-main" id="start-btn" onclick="initStart()">MULAI SESI</button>
+            <div id="running-controls" style="display: none; margin-top: 8px;">
+                <button onclick="handleStop()" style="width:100%; background:none; border:1px solid var(--c04); color:var(--text-main); padding:16px; border-radius:16px; font-weight:700; font-size:0.8rem; cursor:pointer; letter-spacing: 1.5px;">HENTIKAN</button>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let h = 0, m = 0, s = 0;
+        let timer = null, player, isRunning = false;
+        
+        const vibes = { 
+            'flow': '8xGUbBNtPKg', 'clarity': 'oPVte6aMprI', 
+            'deepwork': 'XIJLUxyXJPk', 'void': '_bLX5WfDQfM' 
+        };
+        let currentVibe = vibes['flow'];
+
+        const quotes = [ "Kamu berhasil menaklukkan fokus hari ini.", "Satu langkah lebih dekat menuju tujuan besar.", "Kualitas kerja yang luar biasa, Nerdix!" ];
+
+        function showSoon() {
+            const toast = document.getElementById('soon-toast');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function changeValue(unit, delta) {
+            if(isRunning) return;
+            if(unit === 'h') h = (h + delta + 24) % 24;
+            if(unit === 'm') m = (m + delta + 60) % 60;
+            if(unit === 's') s = (s + delta + 60) % 60;
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            document.getElementById('h-val').innerText = h.toString().padStart(2, '0');
+            document.getElementById('m-val').innerText = m.toString().padStart(2, '0');
+            document.getElementById('s-val').innerText = s.toString().padStart(2, '0');
+        }
+
+        function setMood(type, btn, label) {
+            if(isRunning) return;
+            currentVibe = vibes[type];
+            document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('vibe-text').innerText = label;
+            if(player) { player.loadVideoById(currentVibe); player.pauseVideo(); }
+        }
+
+        function initStart() {
+            let totalSec = (h * 3600) + (m * 60) + s;
+            if(totalSec <= 0) return;
+            isRunning = true;
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('running-controls').style.display = 'block';
+            document.getElementById('day-status').innerText = "FOKUS";
+            document.querySelectorAll('.step-btn').forEach(btn => btn.classList.add('hide'));
+            if(player) { player.setVolume(100); player.playVideo(); }
+            timer = setInterval(() => {
+                if(totalSec > 0) {
+                    totalSec--; h = Math.floor(totalSec / 3600); m = Math.floor((totalSec % 3600) / 60); s = totalSec % 60; updateDisplay();
+                } else { finishSession(); }
+            }, 1000);
+        }
+
+        function handleStop() { clearInterval(timer); fadeOutAudio(() => resetUI()); }
+
+        function finishSession() { 
+            clearInterval(timer); 
+            const congratsSfx = document.getElementById('congrats-sfx');
+            congratsSfx.play().catch(e => console.log("Audio block by browser"));
+
+            fadeOutAudio(() => { 
+                isRunning = false; 
+                document.getElementById('quote-display').innerText = quotes[Math.floor(Math.random() * quotes.length)]; 
+                document.getElementById('finish-notice').style.display = 'flex'; 
+            }); 
+        }
+
+        function closeFinishNotice() { document.getElementById('finish-notice').style.display = 'none'; resetUI(); }
+        
+        function resetUI() { 
+            isRunning = false; h = 0; m = 0; s = 0; 
+            document.getElementById('start-btn').style.display = 'block'; 
+            document.getElementById('running-controls').style.display = 'none'; 
+            document.getElementById('day-status').innerText = "SANTAI"; 
+            document.querySelectorAll('.step-btn').forEach(btn => btn.classList.remove('hide')); 
+            updateDisplay(); 
+        }
+
+        function fadeOutAudio(callback) {
+            if (!player) return callback();
+            let vol = player.getVolume();
+            let fadeInterval = setInterval(() => {
+                if (vol > 0) { vol -= 5; player.setVolume(vol); } 
+                else { clearInterval(fadeInterval); player.pauseVideo(); player.setVolume(100); callback(); }
+            }, 100);
+        }
+
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+        
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('lofi-player', {
+                height: '0', width: '0', videoId: currentVibe,
+                playerVars: { 'autoplay': 0, 'controls': 0, 'loop': 1, 'playlist': currentVibe, 'origin': window.location.origin }
+            });
+        }
+        window.onload = updateDisplay;
+    </script>
+</body>
+</html>
