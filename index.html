@@ -7,8 +7,6 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
     
-    <script defer src="/_vercel/insights/script.js"></script>
-
     <style>
         :root {
             --c10: #747880; --c09: #686c73; --c08: #5d6066;
@@ -73,7 +71,8 @@
 <body>
 
     <div id="lofi-player" style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none;"></div>
-    <audio id="congrats-sfx" src="luar-biasa.mp3"></audio>
+    
+    <audio id="luar-biasa" src="luar-biasa.mp3" preload="auto"></audio>
     
     <div id="soon-toast">SEGERA HADIR ✨</div>
 
@@ -180,31 +179,52 @@
             document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             document.getElementById('vibe-text').innerText = label;
-            if(player) { player.loadVideoById(currentVibe); player.pauseVideo(); }
+            if(player && player.loadVideoById) { player.loadVideoById(currentVibe); player.pauseVideo(); }
         }
 
         function initStart() {
             let totalSec = (h * 3600) + (m * 60) + s;
             if(totalSec <= 0) return;
+
+            // Trigger load sfx agar diizinkan browser
+            const congratsSfx = document.getElementById('congrats-sfx');
+            congratsSfx.load();
+
             isRunning = true;
             document.getElementById('start-btn').style.display = 'none';
             document.getElementById('running-controls').style.display = 'block';
             document.getElementById('day-status').innerText = "FOKUS";
             document.querySelectorAll('.step-btn').forEach(btn => btn.classList.add('hide'));
-            if(player) { player.setVolume(100); player.playVideo(); }
+            
+            if(player && typeof player.playVideo === 'function') { 
+                player.setVolume(100); 
+                player.playVideo(); 
+            }
+
             timer = setInterval(() => {
                 if(totalSec > 0) {
-                    totalSec--; h = Math.floor(totalSec / 3600); m = Math.floor((totalSec % 3600) / 60); s = totalSec % 60; updateDisplay();
-                } else { finishSession(); }
+                    totalSec--; 
+                    h = Math.floor(totalSec / 3600); 
+                    m = Math.floor((totalSec % 3600) / 60); 
+                    s = totalSec % 60; 
+                    updateDisplay();
+                } else { 
+                    finishSession(); 
+                }
             }, 1000);
         }
 
-        function handleStop() { clearInterval(timer); fadeOutAudio(() => resetUI()); }
+        function handleStop() { 
+            clearInterval(timer); 
+            fadeOutAudio(() => resetUI()); 
+        }
 
         function finishSession() { 
             clearInterval(timer); 
             const congratsSfx = document.getElementById('congrats-sfx');
-            congratsSfx.play().catch(e => console.log("Audio block by browser"));
+            
+            // Play suara finish
+            congratsSfx.play().catch(e => console.log("Audio diblokir browser"));
 
             fadeOutAudio(() => { 
                 isRunning = false; 
@@ -213,7 +233,10 @@
             }); 
         }
 
-        function closeFinishNotice() { document.getElementById('finish-notice').style.display = 'none'; resetUI(); }
+        function closeFinishNotice() { 
+            document.getElementById('finish-notice').style.display = 'none'; 
+            resetUI(); 
+        }
         
         function resetUI() { 
             isRunning = false; h = 0; m = 0; s = 0; 
@@ -225,14 +248,22 @@
         }
 
         function fadeOutAudio(callback) {
-            if (!player) return callback();
+            if (!player || typeof player.getVolume !== 'function') return callback();
             let vol = player.getVolume();
             let fadeInterval = setInterval(() => {
-                if (vol > 0) { vol -= 5; player.setVolume(vol); } 
-                else { clearInterval(fadeInterval); player.pauseVideo(); player.setVolume(100); callback(); }
+                if (vol > 0) { 
+                    vol -= 5; 
+                    player.setVolume(vol); 
+                } else { 
+                    clearInterval(fadeInterval); 
+                    player.pauseVideo(); 
+                    player.setVolume(100); 
+                    callback(); 
+                }
             }, 100);
         }
 
+        // YouTube Iframe API
         var tag = document.createElement('script');
         tag.src = "https://www.youtube.com/iframe_api";
         var firstScriptTag = document.getElementsByTagName('script')[0];
@@ -241,9 +272,16 @@
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('lofi-player', {
                 height: '0', width: '0', videoId: currentVibe,
-                playerVars: { 'autoplay': 0, 'controls': 0, 'loop': 1, 'playlist': currentVibe, 'origin': window.location.origin }
+                playerVars: { 
+                    'autoplay': 0, 
+                    'controls': 0, 
+                    'loop': 1, 
+                    'playlist': currentVibe,
+                    'origin': window.location.origin 
+                }
             });
         }
+
         window.onload = updateDisplay;
     </script>
 </body>
